@@ -12,12 +12,13 @@
 (setq rust-packages
   '(
     cargo
-    company
+    ;; company
     racer
-    flycheck
-    (flycheck-rust :toggle (configuration-layer/package-usedp 'flycheck))
-    ggtags
-    helm-gtags
+    ;; Turn off `flycheck' because it's too slow.
+    ;; flycheck
+    ;; (flycheck-rust :toggle (configuration-layer/package-usedp 'flycheck))
+    ;; ggtags
+    ;; helm-gtags
     rust-mode
     toml-mode
     ))
@@ -66,7 +67,19 @@
     (progn
       (spacemacs/set-leader-keys-for-major-mode 'rust-mode
         "=" 'rust-format-buffer
-        "q" 'spacemacs/rust-quick-run))))
+        "q" 'spacemacs/rust-quick-run))
+    :bind
+    (:map rust-mode-map
+          ;; hungry-delete
+          ("\177" . c-hungry-backspace)
+          ([backspace] . c-hungry-backspace)
+          ([deletechar] . c-hungry-delete-forward)
+          ([delete] . c-hungry-delete-forward)
+          ([(control d)] . c-hungry-delete-forward)
+          ;; comment-dwin
+          ([(control c) (c)] . comment-dwim)
+          ([(control c) (control c)] . comment-dwim))
+    ))
 
 (defun rust/init-toml-mode ()
   (use-package toml-mode
@@ -92,14 +105,32 @@
     :defer t
     :init
     (progn
-      (spacemacs/add-to-hook 'rust-mode-hook '(racer-mode eldoc-mode))
+      (spacemacs/add-to-hook
+       'rust-mode-hook
+       '(;; activate racer when `rust-mode' starts
+         racer-mode
+         eldoc-mode
+         ;; run rustfmt before saving rust buffer
+         rust-enable-format-on-save
+         (lambda()
+           ;; Enable `subword-mode' since rust contains camel style names
+           (subword-mode)
+           ;; turn off `rainbow-delimiters-mode' since it's not smooth in rust-mode
+           ;; (rainbow-delimiters-mode-disable)
+           ;; turn off `electric-indent-mode' since it has some issue with
+           ;; indentation position sometimes
+           (electric-indent-local-mode 0))))
       (spacemacs/declare-prefix-for-mode 'rust-mode "mg" "goto")
       (add-to-list 'spacemacs-jump-handlers-rust-mode 'racer-find-definition)
       (spacemacs/declare-prefix-for-mode 'rust-mode "mh" "help")
       (spacemacs/set-leader-keys-for-major-mode 'rust-mode
-        "hh" 'spacemacs/racer-describe))
+                                                "hh" 'spacemacs/racer-describe))
     :config
     (progn
+      (setq racer-cmd (concat (or (getenv "CARGO_HOME")
+                                  (expand-file-name "~/.cargo")) "/bin/racer")
+            racer-rust-src-path (expand-file-name "~/pro/code/rustc-nightly/src/"))
+
       (spacemacs|hide-lighter racer-mode)
       (evilified-state-evilify-map racer-help-mode-map
         :mode racer-help-mode))))
